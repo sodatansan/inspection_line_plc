@@ -28,36 +28,40 @@
 graph TB
     PLC((("PLC<br/>ラダー制御ロジック<br/>OpenPLC / GX Works3")))
 
-    CS["C#<br/>error_log_csharp<br/>(司令塔・監視・記録)"]
+    CS["C#<br/>inspection_manager<br/>(司令塔・監視・記録)"]
     PY["Python<br/>image_inspector.py<br/>(画像判定)"]
     ACT["振り分けアクチュエータ<br/>C++ロボット制御"]
     DB[("SQLite<br/>検査履歴・エラーログ・調整履歴")]
     UI["PictureBox<br/>検査画像表示"]
+    VW["C#<br/>inspection_log_viewer<br/>(エラーログの検索・編集)"]
 
     CS <-->|"Modbus TCP<br/>(EasyModbusTCP)"| PLC
     PLC -->|"Y1出力(物理配線)"| ACT
     PY -->|"プロセス呼び出し<br/>判定結果の受け渡し"| CS
     CS --> DB
     CS --> UI
+    VW <--> DB
 ```
 
-PLCが制御ロジックの中心にあり、C#がPLC・Python・データベース・画面表示をまとめる司令塔として機能します。
+PLCが制御ロジックの中心にあり、C#(inspection_manager)がPLC・Python・データベース・画面表示をまとめる司令塔として機能します。
+過去のエラー記録の検索・編集は、別アプリ(inspection_log_viewer)が同じデータベースを介して担当します。
 
 | 層 | 役割 | 技術 |
 |---|---|---|
 | 制御ロジック | 搬送・検知・判定・振り分けの物理制御 | PLC(ラダー図) |
 | 判定処理 | 画像による欠陥検査・寸法測定 | Python + OpenCV |
 | 司令塔 | PLC監視、Python呼び出し、記録、表示 | C#(WinForms) |
-| データ保存 | 検査履歴・機械エラー・調整ノウハウの蓄積 | SQLite |
+| 履歴の検索・編集 | 過去のエラー記録の検索、対処法の追記 | C#(WinForms) |
+| データ保存 | 検査履歴・機械エラー・調整ノウハウの蓄積 | SQLite(3テーブル) |
 
 ### 各接続の状態
 
 | 接続 | 使用技術 | 状態 |
 |---|---|---|
-| Python ⇔ C# | プロセス呼び出し(標準出力/JSON) | 設計済み・実装予定 |
+| Python ⇔ C# | プロセス呼び出し(標準出力/JSON) | ✅実装済み |
 | C# ⇔ PLC | Modbus TCP(EasyModbusTCP) | ✅検証済み |
 | Python ⇔ PLC | Modbus TCP(pymodbus) | ✅検証済み(技術検証用) |
-| C# ⇔ SQLite | ADO.NET / SQLite | 実装予定 |
+| C# ⇔ SQLite | Microsoft.Data.Sqlite | ✅検証済み(検索・登録・編集・削除) |
 | PLC ⇒ アクチュエータ | 物理配線(Y1出力) | 設計完了(ハードウェア範囲外) |
 
 ---
@@ -106,6 +110,10 @@ PLCが制御ロジックの中心にあり、C#がPLC・Python・データベー
 
 ## 今後の拡張構想
 
+### 検査画面・画像調整ツールの追加
+
+inspection_manager に、検査結果の画面表示(PictureBox)と画像調整ツールを追加し、調整内容をSQLiteに記録する構想です。
+
 ### AIによる分析支援
 
 蓄積したエラーログ・調整履歴データをもとに、Pythonで以下のような分析機能を追加する構想です。
@@ -120,8 +128,7 @@ PLCが制御ロジックの中心にあり、C#がPLC・Python・データベー
 - **PLC設計**: 三菱電機 GX Works3(ラダー言語、FX5U/iQ-Fシリーズ想定)
 - **外部通信検証**: OpenPLC Runtime v4、Modbus TCP
 - **判定処理**: Python, OpenCV, pymodbus
-- **監視・記録**: C#(WinForms), EasyModbusTCP
-- **データ管理**: SQLite(実装予定)
-
+- **監視・記録・検索**: C#(WinForms), EasyModbusTCP, Microsoft.Data.Sqlite
+- **データ管理**: SQLite
 
 
